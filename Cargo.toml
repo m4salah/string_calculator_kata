@@ -1,0 +1,9 @@
+[package]
+name = "string_calculator_kata"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+proptest = "1.5.0"
+regex = "1.11.1"
+thiserror = "1.0.65"
