@@ -102,65 +102,97 @@ mod tests {
     use super::*;
     use proptest::prelude::*;
 
-    #[test]
-    fn empty_string() {
-        assert_eq!(Ok(0), add(""));
+    struct Test {
+        input: String,
+        expect: Result<i64, AddError>,
     }
 
     #[test]
-    fn one_number_string() {
-        assert_eq!(Ok(1), add("1"));
-        assert_eq!(Ok(0), add("0"));
+    fn test_add() {
+        let tests = vec![
+            Test {
+                input: "".to_string(),
+                expect: Ok(0),
+            },
+            Test {
+                input: "0".to_string(),
+                expect: Ok(0),
+            },
+            Test {
+                input: "1".to_string(),
+                expect: Ok(1),
+            },
+            Test {
+                input: "0, 1".to_string(),
+                expect: Ok(1),
+            },
+            Test {
+                input: "0, 1,  2".to_string(),
+                expect: Ok(3),
+            },
+            Test {
+                input: "0, 1,  2, 3".to_string(),
+                expect: Ok(6),
+            },
+            Test {
+                input: "1\n2,3".to_string(),
+                expect: Ok(6),
+            },
+            Test {
+                input: "1,\n".to_string(),
+                expect: Err(AddError::ConsecutiveSeparators),
+            },
+            Test {
+                input: "1\n,2".to_string(),
+                expect: Err(AddError::ConsecutiveSeparators),
+            },
+            Test {
+                input: "//".to_string(),
+                expect: Err(AddError::InvalidInput),
+            },
+            Test {
+                input: "//;\n1;2".to_string(),
+                expect: Ok(3),
+            },
+            Test {
+                input: "//h\n1h3".to_string(),
+                expect: Ok(4),
+            },
+            Test {
+                input: "//\n\n1\n4".to_string(),
+                expect: Ok(5),
+            },
+            Test {
+                input: "//\n\n1\n\n2".to_string(),
+                expect: Err(AddError::ConsecutiveSeparators),
+            },
+            Test {
+                input: "//;\n1;2;-3".to_string(),
+                expect: Err(AddError::HasNegative(vec![-3])),
+            },
+            Test {
+                input: "0, 1, 2, -3".to_string(),
+                expect: Err(AddError::HasNegative(vec![-3])),
+            },
+            Test {
+                input: "0, 1, -2, -3".to_string(),
+                expect: Err(AddError::HasNegative(vec![-2, -3])),
+            },
+            Test {
+                input: "//;\n1;2000".to_string(),
+                expect: Ok(1),
+            },
+            Test {
+                input: "0, 1, 2000, 1001".to_string(),
+                expect: Ok(1),
+            },
+        ];
+
+        for test in tests {
+            assert_eq!(test.expect, add(&test.input))
+        }
     }
 
-    #[test]
-    fn more_number_string() {
-        assert_eq!(Ok(1), add("0, 1"));
-        assert_eq!(Ok(3), add("0, 1, 2"));
-        assert_eq!(Ok(6), add("0, 1, 2, 3"));
-    }
-
-    #[test]
-    fn newline_seprator() {
-        assert_eq!(Ok(6), add("1\n2,3"));
-    }
-
-    #[test]
-    fn no_consecutive_delimiter() {
-        assert_eq!(Err(AddError::ConsecutiveSeparators), add("1,\n"));
-        assert_eq!(Err(AddError::ConsecutiveSeparators), add("1,\n2"));
-        assert_eq!(Err(AddError::ConsecutiveSeparators), add("1\n,2"));
-    }
-
-    #[test]
-    fn invalid_input() {
-        assert_eq!(Err(AddError::InvalidInput), add("//"));
-    }
-
-    #[test]
-    fn custom_delimiter() {
-        assert_eq!(Ok(3), add("//;\n1;2"));
-        assert_eq!(Ok(4), add("//h\n1h3"));
-        assert_eq!(Ok(5), add("//\n\n1\n4"));
-        assert_eq!(Err(AddError::ConsecutiveSeparators), add("//\n\n1\n\n2"));
-    }
-
-    #[test]
-    fn negatives() {
-        assert_eq!(Err(AddError::HasNegative(vec![-3])), add("//;\n1;2;-3"));
-        assert_eq!(Err(AddError::HasNegative(vec![-3])), add("0, 1, 2, -3"));
-
-        assert_eq!(
-            Err(AddError::HasNegative(vec![-2, -3])),
-            add("0, 1, -2, -3")
-        );
-    }
-
-    #[test]
-    fn bigger_than_1000() {
-        assert_eq!(Ok(1), add("//;\n1;2000"));
-        assert_eq!(Ok(1), add("0, 1, 2000, 1001"));
-    }
     proptest! {
         #[test]
         fn doesnt_crash_on_random_input(s: String) {
